@@ -68,9 +68,51 @@ Vue.use(plugins)
  * please remove it before going online! ! !
  */
 
+// wujie 以 shadow DOM 承载子应用：Element 的 popper 默认 append 到 shadow body，
+// 其偏移按 shadow 文档坐标计算，但 position:fixed 最终按宿主视口渲染，导致下拉层整体偏移。
+// Element 只把 $ELEMENT 用于 size，不识别 popperAppendToBody；同时 popper 只要检测到
+// 祖先有 fixed（如 el-dialog__wrapper）就会用 fixed 定位。这里统一改为：
+// 1) popper 不 append 到 body；2) forceAbsolute 强制绝对定位，让计算与渲染在同一坐标系。
+const isWujie = typeof window !== 'undefined' && !!window.__POWERED_BY_WUJIE__
+
 Vue.use(Element, {
   size: Cookies.get('size') || 'medium' // set element-ui default size
 })
+
+if (isWujie) {
+  const popperAppendToBodyProps = {
+    ElSelect: 'popperAppendToBody',
+    ElAutocomplete: 'popperAppendToBody',
+    ElDatePicker: 'appendToBody',
+    ElTimePicker: 'appendToBody',
+    ElCascader: 'appendToBody'
+  }
+  const forceAbsolutePopperOptions = () => ({ gpuAcceleration: false, forceAbsolute: true })
+  // 递归处理组件及其局部子组件（el-select-menu 这类内部组件各自持有 props 副本）
+  const patchPopperOptions = (options, depth) => {
+    if (!options || typeof options !== 'object' || depth > 3) return
+    const props = options.props
+    if (props && props.popperOptions && typeof props.popperOptions.default === 'function') {
+      props.popperOptions.default = forceAbsolutePopperOptions
+    }
+    if (options.components) {
+      Object.keys(options.components).forEach(key => {
+        const child = options.components[key]
+        patchPopperOptions(child && child.options ? child.options : child, depth + 1)
+      })
+    }
+  }
+  Object.keys(Vue.options.components).forEach(name => {
+    const ctor = Vue.options.components[name]
+    const options = ctor && ctor.options
+    if (!options) return
+    const key = popperAppendToBodyProps[name]
+    if (key && options.props && options.props[key] && 'default' in options.props[key]) {
+      options.props[key].default = false
+    }
+    patchPopperOptions(options, 0)
+  })
+}
 
 Vue.config.productionTip = false
 
@@ -89,7 +131,6 @@ if (typeof window !== 'undefined' && window.SoysAuth) {
 }
 
 // wujie 微前端：主应用卸载子应用时销毁实例，卸载后再重新挂载
-const isWujie = typeof window !== 'undefined' && !!window.__POWERED_BY_WUJIE__
 let vm = null
 let busOff = null
 function mount() {
