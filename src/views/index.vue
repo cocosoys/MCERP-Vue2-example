@@ -12,10 +12,10 @@
         <el-card shadow="hover" style="margin-top: 20px">
           <div slot="header"><b>快捷入口</b></div>
           <div style="line-height: 2.4">
-            <el-button type="primary" size="mini" plain icon="el-icon-user" @click="go('/soyshttpovermcerp/user')">用户列表</el-button>
-            <el-button type="success" size="mini" plain icon="el-icon-key" @click="go('/soyshttpovermcerp/group')">权限组列表</el-button>
-            <el-button type="warning" size="mini" plain icon="el-icon-lock" @click="go('/soyshttpovermcerp/apikey')">APIKEY 管理</el-button>
-            <el-button type="info" size="mini" plain icon="el-icon-document" @click="go('/soyshttpovermcerp/lang')">语言管理</el-button>
+            <el-button type="primary" size="mini" plain icon="el-icon-user" @click="go(moduleRoot + '/user')">用户列表</el-button>
+            <el-button type="success" size="mini" plain icon="el-icon-key" @click="go(moduleRoot + '/group')">权限组列表</el-button>
+            <el-button type="warning" size="mini" plain icon="el-icon-lock" @click="go(moduleRoot + '/apikey')">APIKEY 管理</el-button>
+            <el-button type="info" size="mini" plain icon="el-icon-document" @click="go(moduleRoot + '/lang')">语言管理</el-button>
           </div>
         </el-card>
       </el-col>
@@ -25,8 +25,12 @@
 
 <script>
 import { mapGetters } from 'vuex'
+import soysContext from '@/soys/context'
 export default {
   name: 'Index',
+  data() {
+    return { moduleRoot: soysContext.moduleRoot }
+  },
   computed: {
     ...mapGetters(['name', 'nickName'])
   },

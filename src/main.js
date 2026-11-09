@@ -18,7 +18,7 @@ import '@/assets/styles/index.scss' // global css
 import '@/assets/styles/ruoyi.scss' // ruoyi css
 import App from './App'
 import store from './store'
-import router, { wujieRoutes } from './router'
+import router from './router'
 import directive from './directive' // directive
 import plugins from './plugins' // plugins
 import { download } from '@/utils/request'
@@ -122,8 +122,8 @@ Vue.config.productionTip = false
  */
 if (typeof window !== 'undefined' && window.SoysAuth) {
   window.SoysAuth.onLoginSuccess = function (player, mode) {
-    if (window.location.hash.indexOf('#/login') >= 0) {
-      window.location.href = './index'
+    if (router.currentRoute.path === '/login') {
+      router.push('/')
     } else {
       window.location.reload()
     }
@@ -145,8 +145,10 @@ if (isWujie) {
   // wujie 生命周期钩子：mount 时接收主应用 props（含初始 path），并监听路由切换
   window.__WUJIE_MOUNT = (props) => {
     mount()
-    // wujie 模式下侧边栏直接用 wujieRoutes（不调 GenerateRoutes，避免与主应用菜单重复）
-    store.commit('SET_SIDEBAR_ROUTERS', wujieRoutes)
+    // wujie 模式下由主应用 MCERP 提供侧边栏，子应用只用 EmptyLayout 渲染页面内容，
+    // 不挂载 Sidebar / TopNav / Settings / Breadcrumb（layout/index.vue 才有这些组件）。
+    // 业务路由已在 router/index.js 静态注册，此处不再提交任何静态菜单表——
+    // moduleRoutes 现为纯 path → component 映射表，填进菜单树只会产生空数据。
     // 初始路由：主应用传 path 则跳过去（如 /soyshttpovermcerp/group）
     if (props && props.path && router.currentRoute.path !== props.path) {
       router.push(props.path)

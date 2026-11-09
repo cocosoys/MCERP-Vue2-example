@@ -43,13 +43,18 @@ router.beforeEach((to, from, next) => {
     } else {
       if (store.getters.roles.length === 0) {
         isRelogin.show = true
-        store.dispatch('GetInfo').then(() => {
-          isRelogin.show = false
-          store.dispatch('GenerateRoutes').then(accessRoutes => {
-            router.addRoutes(accessRoutes)
-            next({ ...to, replace: true })
-          })
-        }).catch(err => {
+          store.dispatch('GetInfo').then(() => {
+            isRelogin.show = false
+            // 从 MCERP getRouters 取后端合成的 RouterVO 树，按 moduleRoot 裁出本插件菜单；
+            // 前端只提供 path → component 绑定，展示数据全部以后端为准。
+            // GenerateRoutes 内部已 catch 并置空侧边栏，这里再兜一层防呆：
+            // 无论如何都必须调用 next()，否则页面会卡在 NProgress。
+            store.dispatch('GenerateRoutes').then(() => {
+              next({ ...to, replace: true })
+            }).catch(() => {
+              next({ ...to, replace: true })
+            })
+          }).catch(err => {
           store.dispatch('LogOut').then(() => {
             Message.error(err)
             next({ path: '/' })
