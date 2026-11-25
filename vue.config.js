@@ -7,7 +7,7 @@ function resolve(dir) {
 
 const CompressionPlugin = require('compression-webpack-plugin')
 
-const name = process.env.VUE_APP_TITLE || 'SOYSHTTPOverMC-ERP' // 网页标题
+const name = process.env.VUE_APP_TITLE || 'iHomePages ERP' // 网页标题
 
 // 后端接口（仅 dev-server 代理目标，不进生产 bundle；换开发机/后端端口时用
 // VUE_APP_PROXY_TARGET 覆盖，无需改代码）
@@ -22,12 +22,14 @@ module.exports = {
   // 部署生产环境和开发环境下的URL。
   // 默认情况下，Vue CLI 会假设你的应用是被部署在一个域名的根路径上
   // 例如 https://www.ruoyi.vip/。如果应用被部署在一个子路径上，你就需要用这个选项指定这个子路径。例如，如果你的应用被部署在 https://www.ruoyi.vip/admin/，则设置 baseUrl 为 /admin/。
-  // 生产 publicPath 必须绝对前缀：wujie 微前端 + history 模式下，子应用在深层 URL
-  // （如 /web/plugins/SOYSHTTPOverMC-ERP/erp/user）运行，相对路径 "./" 会把异步 chunk
-  // 解析到 /web/plugins/SOYSHTTPOverMC-ERP/erp/... → 404 白屏。默认值与插件名一致，
-  // 可用 VUE_APP_PUBLIC_PATH 覆盖。dev 保持根路径。
+  // 生产 publicPath 必须绝对前缀：本子应用托管在 owner 插件的 /erp 子路径
+  // （ErpExpansion.registerPages → registerDirectory(o, "/erp", erp-dist)），
+  // 即 /web/plugins/ihomepages/erp/。相对 "./" 会把异步 chunk 解析到
+  // /web/plugins/ihomepages/erp/ihomepageserp/... → 404 白屏。
+  // 与 ContractInjector 的 HTML 改写前缀 /web/plugins/ihomepages 同源，不会被二次改写。
+  // 可用 VUE_APP_PUBLIC_PATH 覆盖；dev 保持根路径。
   publicPath: process.env.NODE_ENV === "production"
-    ? (process.env.VUE_APP_PUBLIC_PATH || "/web/plugins/SOYSHTTPOverMC-ERP/")
+    ? (process.env.VUE_APP_PUBLIC_PATH || "/web/plugins/ihomepages/erp/")
     : "/",
   // 在npm run build 或 yarn build 时 ，生成文件的目录名称（要和baseUrl的生产环境路径一致）（默认dist）
   outputDir: 'dist',

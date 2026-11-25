@@ -9,13 +9,16 @@ import RealLayout from '@/layout'
 import EmptyLayout from '@/layout/Empty'
 import NestedRouterView from '@/layout/NestedRouterView'
 
-// wujie 子应用标记（主应用加载时注入 window.__POWERED_BY_WUJIE__）
-export const isWujie = typeof window !== 'undefined' && !!window.__POWERED_BY_WUJIE__
+// 嵌入态：wujie 子应用（__POWERED_BY_WUJIE__）或主应用 iframe（window.self !== window.top）。
+// 两种情况下外层侧边栏都由 MCERP 主应用提供，子应用一律用 EmptyLayout；
+// iHomePages 因 spaFallback=false 只能走 hash 路由，故采用 IFRAME 模式（McerpExpansion.wujie()=false）。
+export const isWujie = typeof window !== 'undefined' &&
+  (!!window.__POWERED_BY_WUJIE__ || window.self !== window.top)
 const Layout = isWujie ? EmptyLayout : RealLayout
 
-// 模块路由根：由契约 pluginsPrefix 末段按 NameSafe.path 规则派生，
-// 与 MCERP MenuRouteServiceImpl 合成的模块路由 path 完全一致（SOYSHTTPOverMC-ERP → /soyshttpovermcerp）。
-// 视图文件的物理目录名（src/views/soyshttpovermcerp/**）属构建期资源路径，与此 URL 根互不影响。
+// 模块路由根：由契约 erpModuleRoot 下发（/ihomepageserp），与
+// MCERP MenuRouteServiceImpl.moduleRoute() 合成的模块 path 严格同源。
+// 视图文件物理目录名（src/views/ihomepageserp/**）属构建期资源路径，与此 URL 根互不影响。
 const moduleRoot = soysContext.moduleRoot
 
 /**
@@ -107,25 +110,14 @@ export const constantRoutes = [
  * 与菜单展示无关；后端生成的 name 不参与渲染，见 router/menuAdapter.js。
  */
 const routeBindings = {
-  [moduleRoot]: { component: Layout, name: 'SoysErpRoot' },
-  [moduleRoot + '/user']: { component: () => import('@/views/soyshttpovermcerp/user/index'), name: 'ErpUser' },
-  [moduleRoot + '/group']: { component: () => import('@/views/soyshttpovermcerp/group/index'), name: 'ErpGroup' },
-  [moduleRoot + '/apikey']: { component: () => import('@/views/soyshttpovermcerp/apikey/index'), name: 'ErpApiKey' },
-  [moduleRoot + '/lang']: { component: () => import('@/views/soyshttpovermcerp/lang/index'), name: 'ErpLang' },
-  [moduleRoot + '/config']: { component: NestedRouterView, name: 'ErpConfig' },
-  [moduleRoot + '/config/config']: { component: () => import('@/views/soyshttpovermcerp/config/config'), name: 'ConfigConfig' },
-  [moduleRoot + '/config/language']: { component: () => import('@/views/soyshttpovermcerp/config/language'), name: 'ConfigLanguage' },
-  [moduleRoot + '/config/pages']: { component: () => import('@/views/soyshttpovermcerp/config/pages'), name: 'ConfigPages' },
-  [moduleRoot + '/config/eula']: { component: () => import('@/views/soyshttpovermcerp/config/eula'), name: 'ConfigEula' },
-  [moduleRoot + '/config/gateway']: { component: NestedRouterView, name: 'ErpGateway' },
-  [moduleRoot + '/config/gateway/gw-config']: { component: () => import('@/views/soyshttpovermcerp/config/gateway/gw-config'), name: 'GwConfig' },
-  [moduleRoot + '/config/gateway/gw-https']: { component: () => import('@/views/soyshttpovermcerp/config/gateway/gw-https'), name: 'GwHttps' },
-  [moduleRoot + '/config/gateway/gw-auth']: { component: () => import('@/views/soyshttpovermcerp/config/gateway/gw-auth'), name: 'GwAuth' },
-  [moduleRoot + '/config/gateway/gw-rate']: { component: () => import('@/views/soyshttpovermcerp/config/gateway/gw-rate'), name: 'GwRate' },
-  [moduleRoot + '/config/gateway/gw-access']: { component: () => import('@/views/soyshttpovermcerp/config/gateway/gw-access'), name: 'GwAccess' },
-  [moduleRoot + '/config/gateway/gw-allow']: { component: () => import('@/views/soyshttpovermcerp/config/gateway/gw-allow'), name: 'GwAllow' },
-  [moduleRoot + '/config/gateway/gw-tls']: { component: () => import('@/views/soyshttpovermcerp/config/gateway/gw-tls'), name: 'GwTls' },
-  [moduleRoot + '/config/gateway/gw-session']: { component: () => import('@/views/soyshttpovermcerp/config/gateway/gw-session'), name: 'GwSession' }
+  [moduleRoot]: { component: Layout, name: 'HomepagesErpRoot' },
+  [moduleRoot + '/config']: { component: NestedRouterView, name: 'HomepagesConfigDir' },
+  [moduleRoot + '/config/config']: {
+    component: () => import('@/views/ihomepageserp/config/index'), name: 'HomepagesConfig'
+  },
+  [moduleRoot + '/config/home']: {
+    component: () => import('@/views/ihomepageserp/config/home'), name: 'HomepagesHome'
+  }
 }
 
 /** 决策②：对外暴露的纯 path → component 表（供 router/menuAdapter.js 查表）。 */
@@ -154,7 +146,7 @@ function buildStaticRoutes(bindings) {
     }
     // 根路径重定向到第一个业务页（vue-router 行为，不是菜单展示数据）
     if (fullPath === moduleRoot) {
-      node.redirect = moduleRoot + '/user'
+      node.redirect = moduleRoot + '/config/config'
     }
     // 直接子：以 fullPath + '/' 开头、且剩余部分不再含 '/'
     const childPaths = allPaths.filter(p =>

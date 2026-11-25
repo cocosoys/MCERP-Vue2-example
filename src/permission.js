@@ -15,13 +15,16 @@ const isWhiteList = (path) => {
   return whiteList.some(pattern => isPathMatch(pattern, path))
 }
 
-// wujie 嵌入：主应用 MCERP 已统一鉴权，子应用不做自己的登录跳转
-const isWujie = typeof window !== 'undefined' && !!window.__POWERED_BY_WUJIE__
+// 嵌入态（wujie 子应用 / 主应用 iframe）：主应用 MCERP 已统一鉴权，子应用不做自己的登录跳转。
+// 必须同时识别 iframe：否则会走 getToken → GetInfo → /api/plugins/ihomepages/getInfo（404）
+// → LogOut → 跳 /login 的死循环，配置页永远打不开（spaFallback=false 下本项目用 IFRAME 模式）。
+const isEmbedded = typeof window !== 'undefined' &&
+  (!!window.__POWERED_BY_WUJIE__ || window.self !== window.top)
 
 router.beforeEach((to, from, next) => {
   NProgress.start()
-  if (isWujie) {
-    // wujie 模式：路由已在 constantRoutes 静态写死，主应用统一鉴权，直接放行
+  if (isEmbedded) {
+    // 嵌入态：业务路由已静态注册，主应用统一鉴权，直接放行
     next()
     return
   }

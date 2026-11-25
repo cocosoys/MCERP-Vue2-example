@@ -13,8 +13,10 @@
  * v5：
  *   - apiBaseURL 直接取 apiFullPrefix（移除 development 三元拆分 '/api' 兜底）；
  *   - pageBase 取契约 pageBase，history / hash 由契约 spaFallback 决定，不再写死 'history'；
- *   - 由 pluginsPrefix 末段（owner 插件名）按 NameSafe.path 规则派生 moduleId / moduleKey /
- *     moduleRoot，供路由根与页面内跳转使用，前端不再散落插件名字符串。
+ *   - 由 pluginsPrefix 末段（owner 插件名）按 NameSafe.path 规则派生 moduleId / moduleKey。
+ * v6（iHomePages）：
+ *   - moduleRoot 优先取契约附加字段 erpModuleRoot（McerpExpansion.contractFields 下发），
+ *     identifier 与插件名不同值时唯一可靠；缺该字段才回退插件名派生值。
  */
 const ctx = typeof window !== 'undefined' ? window.SOYS_CONTEXT : null
 
@@ -32,7 +34,7 @@ if (missing.length) {
   throw new Error('[SOYS] 契约字段缺失：' + missing.join(', '))
 }
 
-// owner 插件标识 = pluginsPrefix 的末段（/plugins/SOYSHTTPOverMC-ERP → SOYSHTTPOverMC-ERP）
+// owner 插件标识 = pluginsPrefix 的末段（/plugins/ihomepages → ihomepages）
 const segments = ctx.pluginsPrefix.split('/').filter(Boolean)
 const moduleId = segments[segments.length - 1]
 // NameSafe.path：仅保留字母 / 数字 / 下划线并转小写
@@ -41,7 +43,22 @@ const moduleKey = moduleId.replace(/[^A-Za-z0-9_]/g, '').toLowerCase()
 if (!moduleKey) {
   throw new Error('[SOYS] 契约 pluginsPrefix 无法派生模块路由名：' + ctx.pluginsPrefix)
 }
-const moduleRoot = '/' + moduleKey
+
+/**
+ * 模块路由根：identifier ≠ owner 插件名时必须用契约的 erpModuleRoot。
+ *
+ * McerpExpansion.contractFields() 下发 "/" + NameSafe.path(identifier)，
+ * 与 MenuRouteServiceImpl.moduleRoute() 合成的模块 path 严格同源。
+ * 本项目 identifier=ihomepages-erp → /ihomepageserp，而 pluginsPrefix 派生的是
+ * /ihomepages —— 若仍按插件名反推，router/menuAdapter.js 的 pickModuleTree
+ * 裁不出模块子树、路由绑定表全数错位，表现为菜单点开白屏。
+ *
+ * 非 ERP 场景（契约未附加该字段）回退到插件名派生值，保持模板通用性。
+ */
+const erpRoot = ctx.erpModuleRoot
+const moduleRoot = (typeof erpRoot === 'string' && erpRoot.charAt(0) === '/')
+  ? erpRoot.replace(/\/+$/, '')
+  : '/' + moduleKey
 
 const apiBaseURL = ctx.apiFullPrefix
 const pagePrefix = ctx.pageFullPrefix
